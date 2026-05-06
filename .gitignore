@@ -1,5 +1,8 @@
 inpost_points.json
-
+ESTAT*
+mapa*
+*.csv
+*.gpkg
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
