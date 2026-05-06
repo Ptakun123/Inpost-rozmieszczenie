@@ -2,7 +2,7 @@ inpost_points.json
 ESTAT*
 mapa*
 *.csv
-*.gpkg
+*.gpkg*
 *.html
 # Byte-compiled / optimized / DLL files
 __pycache__/

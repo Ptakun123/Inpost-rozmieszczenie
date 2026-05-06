@@ -71,7 +71,5 @@ def fetch_all_points(target_country="PL"):
     
     output_filename = "inpost_lockers.gpkg"
     
-    lockers_gdf.to_file(output_filename, driver="GPKG")
+    lockers_gdf.to_file(output_filename, driver="GPKG", layer="lockers")
     print(f"Successfully saved spatial data to: {output_filename}")
-
-fetch_all_points(target_country="PL")
