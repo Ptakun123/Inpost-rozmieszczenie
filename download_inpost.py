@@ -6,14 +6,13 @@ from shapely.geometry import Point
 API_URL = "https://api-global-points.easypack24.net/v1/points"
 PER_PAGE = 5000
 
-def fetch_all_points(target_country="PL"):
+def fetch_all_points():
     all_points = []
     page = 1
     total_pages = 1
 
-    print(f"Starting download (batches of {PER_PAGE} records)...")
+    print(f"Starting global download (batches of {PER_PAGE} records)...")
 
-    # Maintaining a single TCP session speeds up subsequent requests
     with requests.Session() as session:
         while page <= total_pages:
             try:
@@ -39,7 +38,6 @@ def fetch_all_points(target_country="PL"):
                 print(f"Downloaded page {page}/{total_pages} ({len(items)} items)")
                 page += 1
                 
-                # Gentle sleep to avoid triggering anti-scraping protections
                 time.sleep(0.1)
 
             except requests.exceptions.RequestException as e:
@@ -49,27 +47,31 @@ def fetch_all_points(target_country="PL"):
     print(f"\nFinished. Total records downloaded: {len(all_points)}")
     
     lockers = []
+    countries = []
     
     for item in all_points:
-        if item.get("country") == target_country and item.get("location"):
+        if item.get("location"):
             lon = item["location"].get("longitude")
             lat = item["location"].get("latitude")
+            country = item.get("country")
             
             if lon and lat and lon != 0.0 and lat != 0.0:
                 lockers.append(Point(lon, lat))
+                countries.append(country)
 
-    print(f"Loaded {len(lockers)} valid locker locations for {target_country}.")
+    print(f"Loaded {len(lockers)} valid global locker locations.")
 
     if not lockers:
-        print("No data to save. Exiting.")
-        return
+        print("Error: No data to save. Exiting.")
+        return False
 
-    lockers_gdf = gpd.GeoDataFrame(geometry=lockers, crs="EPSG:4326")
+    lockers_gdf = gpd.GeoDataFrame({"country": countries}, geometry=lockers, crs="EPSG:4326")
 
-    print("Reprojecting InPost data to EPSG:3035...")
+    print("Reprojecting global InPost data to EPSG:3035...")
     lockers_gdf = lockers_gdf.to_crs("EPSG:3035")
     
-    output_filename = "inpost_lockers.gpkg"
+    output_filename = "inpost_lockers_global.gpkg"
     
     lockers_gdf.to_file(output_filename, driver="GPKG", layer="lockers")
-    print(f"Successfully saved spatial data to: {output_filename}")
+    print(f"Successfully saved global spatial data to: {output_filename}")
+    return True

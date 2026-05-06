@@ -5,13 +5,19 @@ import webbrowser
 import os
 import numpy as np
 
-def create_investment_map():
+def create_investment_map(target_country):
     print("=============================================")
     print("Map Generator (Eurostat Style / GPU GridLayer)")
     print("=============================================")
 
     print("Processing grid into point cloud...")
-    pop_gdf = gpd.read_file("population_grid.gpkg")
+    try:
+        pop_gdf = gpd.read_file("population_grid.gpkg", layer="population")
+    except Exception as e:
+        print(f"Error loading map data: {e}")
+        return False
+
+    # Filter out empty grids
     pop_gdf = pop_gdf[pop_gdf['population'] > 0].copy()
 
     pop_centroids_gps = pop_gdf.centroid.to_crs("EPSG:4326")
@@ -37,7 +43,7 @@ def create_investment_map():
         color_domain=[1.0, 4.5],
         get_elevation_weight="population",
         elevation_aggregation=pdk.types.String("MAX"),
-        gpu_aggregation=False,
+        gpu_aggregation=True, # Enabled for better performance
         opacity=0.75,
         color_range=[
             [255, 255, 204, 160],
@@ -53,8 +59,17 @@ def create_investment_map():
         ],
     )
 
-    print("Loading existing infrastructure...")
-    lockers_gdf = gpd.read_file("inpost_lockers.gpkg").to_crs("EPSG:4326")
+    print(f"Loading existing infrastructure for {target_country}...")
+    try:
+        lockers_gdf = gpd.read_file("inpost_lockers_global.gpkg", layer="lockers").to_crs("EPSG:4326")
+        
+        # Filter the global database by the selected country
+        lockers_gdf = lockers_gdf[lockers_gdf['country'] == target_country]
+        
+    except Exception as e:
+        print(f"Error loading locker data: {e}")
+        return False
+
     lockers_df = pd.DataFrame({
         'lon': lockers_gdf.geometry.x,
         'lat': lockers_gdf.geometry.y
@@ -71,7 +86,12 @@ def create_investment_map():
     )
 
     print("Loading target locations...")
-    top_spots_gdf = gpd.read_file("top_investment_spots.gpkg")
+    try:
+        top_spots_gdf = gpd.read_file("top_investment_spots.gpkg")
+    except Exception as e:
+        print(f"Error loading target locations: {e}")
+        return False
+
     top_spots_gps = top_spots_gdf.centroid.to_crs("EPSG:4326")
     
     dynamic_radius = top_spots_gdf['search_radius'].iloc[0] if 'search_radius' in top_spots_gdf.columns else 2000
@@ -97,7 +117,11 @@ def create_investment_map():
     )
 
     print("Generating HTML file...")
-    view_state = pdk.ViewState(latitude=52.0693, longitude=19.4803, zoom=5.5, pitch=0)
+    
+    # Calculate map center dynamically based on population grid
+    center_lat = pop_points['lat'].mean()
+    center_lon = pop_points['lon'].mean()
+    view_state = pdk.ViewState(latitude=center_lat, longitude=center_lon, zoom=5.5, pitch=0)
 
     tooltip = {
         "html": "<b style='font-size: 15px;'>{elevationValue}</b> persons/km2",
@@ -113,13 +137,42 @@ def create_investment_map():
         }
     }
 
+    legend_html = """
+    <div style="position: fixed; bottom: 30px; right: 30px; width: 250px; background-color: white; 
+                z-index: 1000; padding: 15px; border-radius: 5px; box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+                font-family: Arial, sans-serif; font-size: 14px; color: #333333;">
+        <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 16px;">Map Legend</h4>
+        
+        <div style="margin-bottom: 10px; display: flex; align-items: center;">
+            <div style="width: 14px; height: 14px; background-color: rgb(144, 238, 144); border-radius: 50%; margin-right: 10px;"></div>
+            <span>Existing Lockers</span>
+        </div>
+        
+        <div style="margin-bottom: 15px; display: flex; align-items: center;">
+            <div style="width: 14px; height: 14px; background-color: rgba(0, 100, 255, 0.4); border: 2px solid white; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 0 1px #ccc;"></div>
+            <span>Target Locations</span>
+        </div>
+        
+        <div>
+            <div style="margin-bottom: 6px;">Population Density (persons/km²)</div>
+            <div style="height: 12px; width: 100%; background: linear-gradient(to right, rgb(255, 255, 204), rgb(253, 141, 60), rgb(73, 0, 10)); border-radius: 3px;"></div>
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 4px; color: #666;">
+                <span>Low</span>
+                <span>High</span>
+            </div>
+        </div>
+    </div>
+    """
+
     r = pdk.Deck(
         layers=[grid_layer, lockers_layer, targets_layer],
         initial_view_state=view_state,
         map_style=pdk.map_styles.LIGHT, 
-        tooltip=tooltip
+        tooltip=tooltip,
+        description=legend_html
     )
-    output_file = os.path.abspath("inpost_investment_map_optimized.html")
+    
+    output_file = os.path.abspath("inpost_investment_map.html")
     r.to_html(output_file)
 
     print(f"\nSuccess! File saved: {output_file}")
@@ -129,5 +182,4 @@ def create_investment_map():
     except Exception:
         print("Use 'explorer.exe inpost_investment_map.html' from the WSL terminal.")
 
-if __name__ == "__main__":
-    create_investment_map()
+    return True

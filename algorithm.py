@@ -4,7 +4,18 @@ import numpy as np
 import geopandas as gpd
 
 def optimize_locations(search_radius_meters, number_of_new_lockers, exclusion_radius_meters):
-    candidates = gpd.read_file("calculated_score.gpkg", layer="scores").reset_index(drop=True)
+    try:
+        candidates = gpd.read_file("calculated_score.gpkg", layer="scores").reset_index(drop=True)
+    except Exception as e:
+        print(f"Error opening scores file: {e}")
+        return False
+
+    if candidates.empty:
+        print("\nERROR: No data available for analysis. Possible reasons:")
+        print("1. Selected country is missing from the Eurostat file (e.g., GB).")
+        print("2. No lockers available in the selected area.")
+        return False
+
     coords = np.column_stack((candidates.geometry.centroid.x, candidates.geometry.centroid.y))
     scores = candidates['score'].values
 
@@ -28,3 +39,5 @@ def optimize_locations(search_radius_meters, number_of_new_lockers, exclusion_ra
     top_spots_gdf = gpd.GeoDataFrame(candidates.iloc[selected_indices].copy(), geometry='geometry', crs="EPSG:3035")
     top_spots_gdf['search_radius'] = search_radius_meters
     top_spots_gdf.to_file("top_investment_spots.gpkg", driver="GPKG")
+    
+    return True

@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from download_inpost import fetch_all_points
 from prepare_grid import extract_and_grid
 from calculate_points import calculate_scores
@@ -25,36 +26,45 @@ def main():
 
     print(f"\n--- Initiating pipeline for country: {args.country} ---")
     
-    # 1. Fetching Locker Data
-    if args.fetch or not os.path.exists("inpost_lockers.gpkg"):
-        print("\n[1/5] Fetching locker data...")
-        fetch_all_points(target_country=args.country)
+    # 1. Fetching Global Locker Data
+    if args.fetch or not os.path.exists("inpost_lockers_global.gpkg"):
+        print("\n[1/5] Fetching global locker data...")
+        if fetch_all_points() is False:
+            print("Error: Stopping process. Failed to fetch locker data.")
+            sys.exit(1)
     else:
-        print("\n[1/5] Skipping fetch (using existing inpost_lockers.gpkg)")
+        print("\n[1/5] Skipping fetch (using existing inpost_lockers_global.gpkg)")
 
     # 2. Grid Generation
     if args.grid or not os.path.exists("population_grid.gpkg"):
         print("\n[2/5] Generating population grid...")
-        extract_and_grid(args.country, args.census)
+        if extract_and_grid(args.country, args.census) is False:
+            print("Error: Stopping process. Failed to generate population grid.")
+            sys.exit(1)
     else:
         print("\n[2/5] Skipping grid generation (using existing population_grid.gpkg)")
 
-    # 3. Distance and Score Calculation
+# 3. Distance and Score Calculation
     if args.score or not os.path.exists("calculated_score.gpkg"):
-        print("\n[3/5] Calculating distances and base scores...")
-        calculate_scores()
+        print(f"\n[3/5] Calculating distances and base scores for {args.country}...")
+        if calculate_scores(args.country) is False:
+            print("Error: Stopping process. Failed to calculate scores.")
+            sys.exit(1)
     else:
         print("\n[3/5] Skipping score calculation (using existing calculated_score.gpkg)")
 
-    # 4. Optimization (Always runs as it is fast and depends on CLI params)
+    # 4. Optimization
     print("\n[4/5] Executing optimization algorithm...")
-    optimize_locations(args.radius, args.lockers, args.exclusion)
+    if optimize_locations(args.radius, args.lockers, args.exclusion) is False:
+        print("Error: Stopping process. Optimization algorithm encountered an issue.")
+        sys.exit(1)
     
     # 5. Map Visualization
     print("\n[5/5] Generating HTML map...")
-    create_investment_map()
+    if create_investment_map(args.country) is False:
+        print("Error: Stopping process. Failed to generate the map.")
+        sys.exit(1)
     
     print("\n--- Process completed successfully ---")
-
 if __name__ == "__main__":
     main()
