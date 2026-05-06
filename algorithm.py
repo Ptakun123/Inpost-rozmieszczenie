@@ -13,7 +13,7 @@ candidates = gpd.read_file("calculated_score.gpkg")
 if candidates.empty:
     raise ValueError("No grids left. Adjust your base distance filter.")
 
-# CRITICAL: Reset index to ensure matrix rows align perfectly with DataFrame indices
+#Reset index to ensure matrix rows align perfectly with DataFrame indices
 candidates = candidates.reset_index(drop=True)
 
 # 2. Extract coordinates and scores
@@ -53,6 +53,7 @@ print("Running fast Non-Maximum Suppression...")
 tree = cKDTree(coords)
 active_mask = np.ones(len(candidates), dtype=bool)
 
+active_mask[candidates['population'] <= 0] = False
 # Sort descending
 sorted_indices = np.argsort(-neighborhood_scores)
 selected_indices = []
@@ -71,11 +72,16 @@ for idx in sorted_indices:
         active_mask[eliminated_indices] = False
 
 # 7. Format results
-top_spots_df = candidates.iloc[selected_indices]
+top_spots_df = candidates.iloc[selected_indices].copy()
+top_spots_df['search_radius'] = search_radius_meters # <-- Przekazanie promienia
 
 print("\n=== TOP 20 LOCATIONS (CHOSEN BY NEIGHBORHOOD POTENTIAL) ===")
 print(top_spots_df[['SPATIAL', 'population', 'score', 'neighborhood_score', 'distance_km']].to_string(index=False))
 
-# Optional: Export exact grids to view them on a map
-# top_spots_gdf = gpd.GeoDataFrame(top_spots_df, geometry='geometry', crs="EPSG:3035")
-# top_spots_gdf.to_file("focal_lockers_sparse.gpkg", driver="GPKG")
+
+print("\nZapisywanie rekomendowanych lokalizacji do pliku...")
+
+top_spots_gdf = gpd.GeoDataFrame(top_spots_df, geometry='geometry', crs="EPSG:3035")
+
+top_spots_gdf.to_file("top_investment_spots.gpkg", driver="GPKG")
+print("Zapisano plik: top_investment_spots.gpkg")

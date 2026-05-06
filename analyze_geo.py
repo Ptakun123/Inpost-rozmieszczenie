@@ -34,9 +34,11 @@ df = df.dropna(subset=['geometry'])
 print("Converting to map layer...")
 grid_gdf = gpd.GeoDataFrame(df, geometry='geometry', crs="EPSG:3035")
 
-final_grid = grid_gdf[['SPATIAL', 'OBS_VALUE', 'geometry']].copy()
-final_grid.rename(columns={'OBS_VALUE': 'population'}, inplace=True)
+population_grid = grid_gdf[['SPATIAL', 'OBS_VALUE', 'geometry']].copy()
+population_grid.rename(columns={'OBS_VALUE': 'population'}, inplace=True)
 
 print("Saving final grid to GeoPackage...")
-final_grid.to_file("calculated_grid.gpkg", driver="GPKG")
+population_grid.to_file("population_grid.gpkg", driver="GPKG")
 print("Saved successfully.")
+
+

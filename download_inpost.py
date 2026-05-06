@@ -1,11 +1,12 @@
 import requests
-import json
 import time
+import geopandas as gpd
+from shapely.geometry import Point
 
 API_URL = "https://api-global-points.easypack24.net/v1/points"
 PER_PAGE = 5000
 
-def fetch_all_points():
+def fetch_all_points(target_country="PL"):
     all_points = []
     page = 1
     total_pages = 1
@@ -46,8 +47,31 @@ def fetch_all_points():
                 time.sleep(5)
 
     print(f"\nFinished. Total records downloaded: {len(all_points)}")
+    
+    lockers = []
+    
+    for item in all_points:
+        if item.get("country") == target_country and item.get("location"):
+            lon = item["location"].get("longitude")
+            lat = item["location"].get("latitude")
+            
+            if lon and lat and lon != 0.0 and lat != 0.0:
+                lockers.append(Point(lon, lat))
 
-    with open("inpost_points.json", "w", encoding="utf-8") as f:
-        json.dump(all_points, f, ensure_ascii=False, indent=2)
+    print(f"Loaded {len(lockers)} valid locker locations for {target_country}.")
 
-fetch_all_points()
+    if not lockers:
+        print("No data to save. Exiting.")
+        return
+
+    lockers_gdf = gpd.GeoDataFrame(geometry=lockers, crs="EPSG:4326")
+
+    print("Reprojecting InPost data to EPSG:3035...")
+    lockers_gdf = lockers_gdf.to_crs("EPSG:3035")
+    
+    output_filename = "inpost_lockers.gpkg"
+    
+    lockers_gdf.to_file(output_filename, driver="GPKG")
+    print(f"Successfully saved spatial data to: {output_filename}")
+
+fetch_all_points(target_country="PL")
