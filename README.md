@@ -19,10 +19,15 @@ I was inspired by the map available at (https://ec.europa.eu/eurostat/web/gisco/
 
 Here are some outputs:
 ![Whole Map of Germany](images/whole_map_DE.png)
+Here we can see the whole map - the blue circles are places where a new locker could be located - if you zoom in the radius is scaled to the value provided in the algorithm
 ![Whole Map of Poland](images/whole_map_PL.png)
+Map of Poland - the squares symbolize the density of the population
 ![One Point Near Berlin](images/one_poin_near_DE.png)
+Closer look at a point in germany - the green points are lockers already built
 ![One Point in Poland](images/one_point_PL.png)
+Closer look at a point in Poland - nice example of a place that would benefit with a locker
 ![CLI view](images/cli_view.png)
+View from the cli
 
 
 
@@ -53,7 +58,6 @@ This project relies heavily on spatial data libraries. The main focus was keepin
 
 ### Build & run
 
-[Step-by-step instructions to get your solution running from a clean clone of the repository. Be specific — commands, not just descriptions.]
 
 #### Linux / macOS
 ```bash
